@@ -98,6 +98,11 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
+          // Miles per hour to meters per second conversion
+          const double MPH_TO_MPS = 0.44704;
+
+          v *= MPH_TO_MPS;
+
           // Transform to car coordinates from global coordinates
           for (size_t i = 0; i < ptsx.size(); ++i) {
           	double shift_x = ptsx[i] - px;

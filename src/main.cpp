@@ -100,6 +100,9 @@ int main() {
           */
           // Miles per hour to meters per second conversion
           const double MPH_TO_MPS = 0.44704;
+          const double Lf = 2.67;
+          // predict state in 100ms. use dt > latency
+          double latency = 0.1;
 
           v *= MPH_TO_MPS;
 
@@ -120,20 +123,25 @@ int main() {
           // The polynomial fit
           auto coeffs = polyfit(ptsx_transform, ptsy_transform, 3);
 
-          // The cross track error is calculated by evaluating at polynomial at x, f(x)
-          // and subtracting y. Here, x = y = 0. Namely, polyeval(coeffs, x) - y = coeffs[0] - 0
-          double cte = coeffs[0];
-          // Due to the sign starting at 0, the orientation error is -f'(0).
-          // derivative of coeffs[0] + coeffs[1]*x + coeffs[2]*x^2 + coeffs[3]*x^3  -> coeffs[1]
-          // Here, epsi = psi - atan(f'(x)) at psi == 0 and x == 0.
-          double epsi = -atan(coeffs[1]);
-
           double steer_value = j[1]["steering_angle"];
           double throttle_value = j[1]["throttle"];
 
-          Eigen::VectorXd state(6);
-          state << 0, 0, 0, v, cte, epsi;
+          double pred_x = v * latency;  // = 0 + v * cos(psi) * latency, where psi = 0
+          double pred_y = 0;  // = 0 + v * sin(psi) * latency, where psi = 0
+          psi = psi - v * steer_value / Lf * latency;
+          v = v + throttle_value * latency;
+          
+          // The cross track error is calculated by evaluating at polynomial at x, f(x)
+          // and subtracting y. Here, x = y = 0. Namely, polyeval(coeffs, x) - y = coeffs[0] - 0
+          double cte = polyeval(coeffs, pred_x);
+          // Due to the sign starting at 0, the orientation error is -f'(0).
+          // derivative of coeffs[0] + coeffs[1]*x + coeffs[2]*x^2 + coeffs[3]*x^3  -> coeffs[1]
+          // Here, epsi = psi - atan(f'(x)) at psi == 0 and x == 0.
+          //double epsi = -atan(coeffs[1]); // without latency
+          double epsi = psi - atan(coeffs[1] + 2*coeffs[2]*pred_x + 3*coeffs[3]*pow(pred_x,2));
 
+          Eigen::VectorXd state(6);
+          state << pred_x, pred_y, psi, v, cte, epsi;
 
           auto vars = mpc.Solve(state, coeffs);
 

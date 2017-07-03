@@ -127,7 +127,7 @@ int main() {
           double throttle_value = j[1]["throttle"];
 
           double pred_x = v * latency;  // = 0 + v * cos(psi) * latency, where psi = 0
-          double pred_y = 0;  // = 0 + v * sin(psi) * latency, where psi = 0
+          //double pred_y = 0;  // = 0 + v * sin(psi) * latency, where psi = 0
           psi = psi - v * steer_value / Lf * latency;
           v = v + throttle_value * latency;
           
@@ -141,7 +141,7 @@ int main() {
           double epsi = psi - atan(coeffs[1] + 2*coeffs[2]*pred_x + 3*coeffs[3]*pow(pred_x,2));
 
           Eigen::VectorXd state(6);
-          state << pred_x, pred_y, psi, v, cte, epsi;
+          state << 0, 0, 0, v, cte, epsi;
 
           auto vars = mpc.Solve(state, coeffs);
 

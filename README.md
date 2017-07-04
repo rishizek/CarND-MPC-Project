@@ -113,3 +113,66 @@ that's just a guess.
 
 One last note here: regardless of the IDE used, every submitted project must
 still be compilable with cmake and make./
+
+
+[video1]: ./mpc_output.mp4
+
+## Reflection
+### The Model
+
+*Student describes their model in detail. This includes the state, actuators and update equations.*
+
+#### The model uses 6 state vector and 2 actuators with update equations
+6 state vector:
+
+* `x(t)` (float) - The x position of the vehicle at `t` in vehicle's coordinates (longitudinal axis, i.e. direction of travel),
+* `y(t)` (float) - The y positions of the vehicle at `t` in vehicle's coordinates (lateral axis),
+* `psi(t)` (float) - The orientation of the vehicle at `t` in **radians** in vehicle's coordinates,
+* `v(t)` (float) - The speed of the vehicle at `t`,
+* `cte(t)` (float) - The cross track error at `t`,
+* `epsi(t)` (float) - The directional error at `t`.
+
+2 actuators:
+
+* `delta(t)` (float) - The steering angle [-0.436332, 0.436332] at `t` in **radians**,
+* `a(t)` (float) - The throttle value [-1, 1] at `t`.
+
+Update equations for the state vector:
+
+* `x(t+1) = x(t) + v(t) * cos(psi(t)) * dt`,
+* `y(t+1) = y(t) + v(t) * sin(psi(t)) * dt`,
+* `psi(t+1) = psi(t) + v(t) / Lf * delta(t) * dt`
+* `v(t+1) = v(t) + a(t) * dt`,
+* `cte(t+1) = f(x(t)) - y(t) + v(t) * sin(epsi(t)) * dt`,
+* `epsi(t+1) = psi(t) - psides(t) + v(t) * delta(t) / Lf * dt`,
+where `Lf` is the distance between the front of the vehicle and its center of gravity, `f(x)` is the 3rd order polynomial fit for the waypoints, and `psides(t)` (desired psi) is the [tangential  angle](https://en.wikipedia.org/wiki/Tangential_angle) of the polynomial f evaluated at `x`, i.e. `arctan(f′(x))`. 
+
+#### Cost
+As for cost, we used cte, epsi, and vehicle speed (lines 61-63), steer angle, and throttle (lines 68-69), and steer angle gap between sequential actions, and throttle gap between sequential actions (line 74-75). Among them, we set largest weight to steer angle gap, then epsi, cte. This indicates that smooth steer angle movement, and minimizing directional error and cross track error are more important than other state variables.  
+
+
+### Timestep Length and Elapsed Duration (N & dt)
+
+*Student discusses the reasoning behind the chosen N (timestep length) and dt (elapsed duration between timesteps) values. Additionally the student details the previous values tried.*
+
+`N` and `dt` are determined considering the prediction horizon (i.e. the duration over which future predictions are made.), `T (= N * dt)` and the `latency` (= 100ms in our case) in mind, with the assumption that `dt` is greater than latency. Considering the `latency` is 100ms = 0.1s, we used `dt = 0.2 > latency`. Then, `dt` is determined because that the prediction horizon should not be too large nor too small. 
+
+The final parameters used in the model are:
+`N = 10, dt = 0.2s`, thus `T = N * dt = 5s`.
+
+### Polynomial Fitting and MPC Preprocessing
+
+*A polynomial is fitted to waypoints.
+If the student preprocesses waypoints, the vehicle state, and/or actuators prior to the MPC procedure it is described.*
+
+The waypoints are transformed from the global coordinates to the vehicle coordinates each time so that later computations become easier. Also some components of the vehicle state vector are updated before computing the optimal steer angle and throttle to deal with latency, which is described in detail below.
+
+### Model Predictive Control with Latency
+
+*The student implements Model Predictive Control that handles a 100 millisecond latency. Student provides details on how they deal with latency.*
+
+To deal with latency, `v, cte, epsi` components of the state vector are updated using `latency` instead of `dt` (lines: 126-144). Here, the rest of components, `x, y, psi`, are kept `0` as they are in car coordinates (line 144), and `latency = 0.1 (= 100ms)`.
+
+### Result
+Here's a [link to my video result][video1].
+
